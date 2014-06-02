@@ -1,0 +1,42 @@
+body {
+  height: 100%;
+  padding: 0;
+  margin: 0; }
+
+* {
+  box-sizing: border-box; }
+
+#viewport {
+  border: 5px solid #aaaaaa;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: scroll; }
+  #viewport #map {
+    background: black;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border: 24px solid transparent;
+    overflow: scroll; }
+    #viewport #map #debug-tiles {
+      position: absolute;
+      top: 0;
+      left: 0; }
+    #viewport #map .d {
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      float: left; }
+      #viewport #map .d:hover {
+        background: rgba(255, 0, 0, 0.5); }
+    #viewport #map .d, #viewport #map .t {
+      width: 24px;
+      height: 24px;
+      display: inline-block; }
+    #viewport #map .t.t0 {
+      background: black; }
+    #viewport #map .t.t1 {
+      background: blue; }
