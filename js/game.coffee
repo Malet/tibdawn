@@ -56,51 +56,62 @@ $(document).ready ->
   first_level = new Map {name: 'first_level', size:{x: 10, y: 10}, terrain: [], base_tile: 0}
   game.load_map first_level
 
-  astar = new Astar {grid: [10,10], start: [1,1], end: [5,5]}
+  astar = new Astar {grid: [10,10], start: [2,2], end: [9,9]}
   astar.search()
+
+
+class Node
+  constructor: (options) ->
+    {@coords, @f, @g, @h, @parent} = options
+
 
 class Astar
   constructor: (options) ->
     {@grid, @start, @end} = options
-    highlight @start, 'green'
+    highlight @start, 'limegreen'
     highlight @end, 'red'
     @open_list = []
 
   search: ->
     @open_list = [@start]
-    for node in this._scored_nodes([1,1])
-      node.
-    console.log "grid = #{@grid}"
-    console.log "h = #{this._heuristic(@start)}"
-    console.log this._scored_nodes([1,1])
+    # Add suitable nodes to open list
+    start_node = new Node({coords: @start, g: 0})
+    start_node.h = this._h(start_node)
 
-  _heuristic: (point) -> # Currently manhattan distance
-    (@end[0] - point[0]) + (@end[1] - point[1])
+    for node in this._suitable_nodes(start_node)
+      highlight node.coords, 'darkgreen'
 
-  _candidate_nodes: (point) ->
+    highlight this._scored_nodes(start_node)[0].coords, 'blue'
+
+  _f: (node) ->
+    this._g(node) + this._h(node)
+  _g: (node) ->
+    node.parent.g + 1
+  _h: (node) -> # Currently manhattan distance
+    (@end[0] - node.coords[0]) + (@end[1] - node.coords[1])
+
+  _candidate_nodes: (node) ->
+    coords = node.coords
     [
-      [point[0], point[1]-1] # Above
-      [point[0], point[1]+1] # Below
-      [point[0]-1, point[1]] # Left
-      [point[0]+1, point[1]] # Right
+      new Node({coords: [coords[0], coords[1]-1], parent: node}), # Above
+      new Node({coords: [coords[0], coords[1]+1], parent: node}), # Below
+      new Node({coords: [coords[0]-1, coords[1]], parent: node}), # Left
+      new Node({coords: [coords[0]+1, coords[1]], parent: node}) # Right
     ]
 
-  _suitable_nodes: (point) ->
+  _suitable_nodes: (node) ->
     grid = @grid
-    this._candidate_nodes(point).filter (cpoint) ->
-      cpoint[0] > 0 && cpoint[1] > 0 &&
-      cpoint[0] <= grid[0] && cpoint[1] <= grid[1]
+    this._candidate_nodes(node).filter (cnode) ->
+      # Remove those nodes which are outside the grid bounds
+      cnode.coords[0] > 0 && cnode.coords[1] > 0 &&
+      cnode.coords[0] <= grid[0] && cnode.coords[1] <= grid[1]
 
-  _scored_nodes: (point) ->
-    scored_nodes = []
-    for node in this._suitable_nodes(point)
-      scored_nodes.push {
-        h: this._heuristic(point)
-        # g: 
-        point: node
-        parent: point
+  _scored_nodes: (node) ->
+    nodes = this._suitable_nodes(node)
+    for node in nodes
+      node.g = this._g(node)
+      node.h = this._h(node)
+      node.f = this._f(node)
 
-      }
-
-    scored_nodes.sort (a,b) ->
-      if a.score > b.score then 1 else -1
+    nodes.sort (a,b) ->
+      if a.f > b.f then 1 else -1
