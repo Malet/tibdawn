@@ -100,26 +100,34 @@
   };
 
   $(document).ready(function() {
-    var astar, first_level, game;
+    var astar, first_level, game, node, path, _results;
     game = new Game({
       debug: true
     });
     first_level = new Map({
       name: 'first_level',
       size: {
-        x: 10,
-        y: 12
+        x: 20,
+        y: 20
       },
       terrain: [],
       base_tile: 0
     });
     game.load_map(first_level);
     astar = new Astar({
-      grid: [10, 12],
+      grid: [20, 20],
       start: [1, 1],
-      end: [10, 7]
+      end: [15, 12]
     });
-    return astar.search();
+    path = astar.search();
+    node = path;
+    astar.refresh_display();
+    highlight(node.coords, 'white');
+    _results = [];
+    while (node = node.parent) {
+      _results.push(highlight(node.coords, 'white'));
+    }
+    return _results;
   });
 
   Node = (function() {
@@ -138,77 +146,25 @@
   Astar = (function() {
     function Astar(options) {
       this.grid = options.grid, this.start = options.start, this.end = options.end;
-      highlight(this.start, 'limegreen');
-      highlight(this.end, 'red');
       this.open = [];
       this.closed = [];
-      this.impassable = [
-        new Node({
-          coords: [2, 1]
-        }), new Node({
-          coords: [2, 2]
-        }), new Node({
-          coords: [2, 3]
-        }), new Node({
-          coords: [2, 4]
-        }), new Node({
-          coords: [2, 5]
-        }), new Node({
-          coords: [2, 6]
-        }), new Node({
-          coords: [2, 7]
-        }), new Node({
-          coords: [2, 8]
-        }), new Node({
-          coords: [5, 2]
-        }), new Node({
-          coords: [5, 3]
-        }), new Node({
-          coords: [5, 4]
-        }), new Node({
-          coords: [5, 5]
-        }), new Node({
-          coords: [5, 6]
-        }), new Node({
-          coords: [5, 7]
-        }), new Node({
-          coords: [5, 8]
-        }), new Node({
-          coords: [5, 9]
-        }), new Node({
-          coords: [5, 10]
-        }), new Node({
-          coords: [6, 6]
-        }), new Node({
-          coords: [7, 6]
-        }), new Node({
-          coords: [8, 6]
-        }), new Node({
-          coords: [9, 6]
-        })
-      ];
+      this.impassable = [[2, 1], [2, 2], [2, 3], [2, 4], [2, 5], [2, 6], [2, 7], [2, 8], [2, 9], [2, 10], [2, 11], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6], [4, 7], [4, 8], [4, 9], [4, 10], [4, 11], [4, 12], [4, 13], [4, 13], [5, 13], [6, 13], [7, 13], [8, 13], [9, 13], [10, 13], [11, 13], [12, 13], [13, 13], [14, 13], [15, 13], [16, 13], [17, 13], [18, 13], [19, 13], [20, 13], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [5, 8], [7, 8], [8, 8], [9, 8], [10, 8]].map(function(coords) {
+        return new Node({
+          coords: coords
+        });
+      });
     }
 
     Astar.prototype.refresh_display = function() {
-      var c, o, _i, _j, _len, _len1, _ref, _ref1;
-      console.log("====");
-      _ref = this.closed;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        c = _ref[_i];
-        console.log("closed: ", c.coords, c.f(), c.g, c.h);
-      }
-      _ref1 = this.open;
-      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-        o = _ref1[_j];
-        console.log("open: ", o.coords, o.f(), o.g, o.h);
-      }
-      highlight_list(this.closed, 'darkred');
-      highlight_list(this.open, 'green');
+      highlight_list(this.closed, 'rgba(255,0,0,0.3)');
+      highlight_list(this.open, 'rgba(0,255,0,0.3)');
+      highlight(this.start, 'limegreen');
+      highlight(this.end, 'red');
       return highlight_list(this.impassable, 'yellow');
     };
 
     Astar.prototype.search = function() {
-      var finished, lowest_score, node, start_node, _i, _len, _ref, _results;
+      var existing_node, lowest_score, node, start_node, _i, _len, _ref;
       start_node = new Node({
         coords: this.start,
         g: 0
@@ -216,34 +172,41 @@
       start_node.h = this._heuristic(start_node);
       this.open.push(start_node);
       lowest_score = start_node;
-      finished = false;
-      _results = [];
-      while (!finished && this.open.length > 0) {
-        this._move_to_closed(lowest_score);
+      while (true) {
         _ref = this._scored_nodes(lowest_score);
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           node = _ref[_i];
-          if (!this._node_open(node)) {
+          if (existing_node = this._node_open(node)) {
+            if (node.f() <= existing_node.f()) {
+              this.open = this.open.filter(function(onode) {
+                return onode !== existing_node;
+              });
+              this.open.push(node);
+            }
+          } else {
             this.open.push(node);
           }
         }
-        this.refresh_display();
-        lowest_score = this._scored_nodes(lowest_score)[0];
+        this._move_to_closed(lowest_score);
+        this._sort_open_list();
+        if (this.open.length <= 0) {
+          this.closed = this.closed.sort(function() {
+            if (a.f() > b.f()) {
+              return 1;
+            } else {
+              return -1;
+            }
+          });
+          return this.closed[0];
+        }
+        lowest_score = this.open[0];
         if (this._coords_equal(new Node({
           coords: this.end
         }), lowest_score)) {
           node = lowest_score;
-          while (typeof node !== 'undefined') {
-            console.log(node.coords);
-            highlight(node.coords, 'aqua');
-            node = node.parent;
-          }
-          _results.push(finished = true);
-        } else {
-          _results.push(void 0);
+          return node;
         }
       }
-      return _results;
     };
 
     Astar.prototype._heuristic = function(node) {
@@ -323,12 +286,22 @@
       });
     };
 
+    Astar.prototype._sort_open_list = function() {
+      return this.open = this.open.sort(function(a, b) {
+        if (a.f() > b.f()) {
+          return 1;
+        } else {
+          return -1;
+        }
+      });
+    };
+
     Astar.prototype._node_in_list = function(node, list) {
       var list_node, _i, _len;
       for (_i = 0, _len = list.length; _i < _len; _i++) {
         list_node = list[_i];
         if (this._coords_equal(node, list_node)) {
-          return true;
+          return list_node;
         }
       }
       return false;
@@ -339,11 +312,11 @@
     };
 
     Astar.prototype._node_closed = function(node) {
-      return this._node_in_list(node, this.closed);
+      return !!this._node_in_list(node, this.closed);
     };
 
     Astar.prototype._node_impassable = function(node) {
-      return this._node_in_list(node, this.impassable);
+      return !!this._node_in_list(node, this.impassable);
     };
 
     Astar.prototype._coords_equal = function(node1, node2) {

@@ -58,11 +58,16 @@ highlight_list = (nodes, colour) ->
 
 $(document).ready ->
   game = new Game {debug: true}
-  first_level = new Map {name: 'first_level', size:{x: 10, y: 12}, terrain: [], base_tile: 0}
+  first_level = new Map {name: 'first_level', size:{x: 20, y: 20}, terrain: [], base_tile: 0}
   game.load_map first_level
 
-  astar = new Astar {grid: [10,12], start: [1,1], end: [10,7]}
-  astar.search()
+  astar = new Astar {grid: [20,20], start: [1,1], end: [15,12]}
+  path = astar.search()
+  node = path
+  astar.refresh_display()
+  highlight node.coords, 'white'
+  while node = node.parent
+    highlight node.coords, 'white'
 
 
 class Node
@@ -76,45 +81,72 @@ class Node
 class Astar
   constructor: (options) ->
     {@grid, @start, @end} = options
-    highlight @start, 'limegreen'
-    highlight @end, 'red'
     @open   = []
     @closed = []
     @impassable = [
-      new Node({coords: [2,1]}),
-      new Node({coords: [2,2]}),
-      new Node({coords: [2,3]}),
-      new Node({coords: [2,4]}),
-      new Node({coords: [2,5]}),
-      new Node({coords: [2,6]}),
-      new Node({coords: [2,7]}),
-      new Node({coords: [2,8]}),
+      [2,1],
+      [2,2],
+      [2,3],
+      [2,4],
+      [2,5],
+      [2,6],
+      [2,7],
+      [2,8],
+      [2,9],
+      [2,10],
+      [2,11],
 
-      new Node({coords: [5,2]}),
-      new Node({coords: [5,3]}),
-      new Node({coords: [5,4]}),
-      new Node({coords: [5,5]}),
-      new Node({coords: [5,6]}),
-      new Node({coords: [5,7]}),
-      new Node({coords: [5,8]}),
-      new Node({coords: [5,9]}),
-      new Node({coords: [5,10]}),
+      [4,2],
+      [4,3],
+      [4,4],
+      [4,5],
+      [4,6],
+      [4,7],
+      [4,8],
+      [4,9],
+      [4,10],
+      [4,11],
+      [4,12],
+      [4,13],
 
-      new Node({coords: [6,6]}),
-      new Node({coords: [7,6]}),
-      new Node({coords: [8,6]}),
-      new Node({coords: [9,6]}),
-    ]
+      [4,13],
+      [5,13],
+      [6,13],
+      [7,13],
+      [8,13],
+      [9,13],
+      [10,13],
+      [11,13],
+      [12,13],
+      [13,13],
+      [14,13],
+      [15,13],
+      [16,13],
+      [17,13],
+      [18,13],
+      [19,13],
+      [20,13],
+
+      [5,5],
+      [6,5],
+      [7,5],
+      [8,5],
+      [9,5],
+
+      [5,8],
+      [7,8],
+      [8,8],
+      [9,8],
+      [10,8],
+    ].map (coords) ->
+      new Node({coords: coords})
+    
 
   refresh_display: ->
-    console.log "===="
-    for c in @closed
-      console.log "closed: ", c.coords, c.f(), c.g, c.h
-
-    for o in @open
-      console.log "open: ", o.coords, o.f(), o.g, o.h
-    highlight_list @closed, 'darkred'
-    highlight_list @open, 'green'
+    highlight_list @closed, 'rgba(255,0,0,0.3)'
+    highlight_list @open, 'rgba(0,255,0,0.3)'
+    highlight @start, 'limegreen'
+    highlight @end, 'red'
     highlight_list @impassable, 'yellow'
 
   search: ->
@@ -126,24 +158,29 @@ class Astar
     lowest_score = start_node
     # this._move_to_closed(lowest_score)
 
-    finished = false
-    while !finished && @open.length > 0
-      this._move_to_closed(lowest_score)
-      
+    while true
       for node in this._scored_nodes(lowest_score)
-        this.open.push node unless this._node_open(node)
+        if existing_node = this._node_open(node)
+          # If it's already on the list, keep the cheapest one
+          if node.f() <= existing_node.f()
+            @open = @open.filter (onode) -> onode isnt existing_node
+            @open.push node
+        else
+          @open.push node
       
-      this.refresh_display()
-
-      lowest_score = this._scored_nodes(lowest_score)[0]
+      this._move_to_closed(lowest_score)
+      this._sort_open_list()
+      
+      if @open.length <= 0 # Could not find a path, return closest
+        @closed = @closed.sort ->
+          if a.f() > b.f() then 1 else -1
+        return @closed[0]
+      
+      lowest_score = @open[0]
 
       if this._coords_equal(new Node({coords: @end}), lowest_score)
         node = lowest_score
-        while typeof node != 'undefined'
-          console.log node.coords
-          highlight node.coords, 'aqua'
-          node = node.parent
-        finished = true
+        return node
 
 
   _heuristic: (node) -> # Currently Manhattan distance
@@ -188,18 +225,22 @@ class Astar
     nodes.sort (a,b) ->
       if a.f() > b.f() then 1 else -1
 
+  _sort_open_list: ->
+    @open = @open.sort (a,b) ->
+      if a.f() > b.f() then 1 else -1
+
   _node_in_list: (node, list) ->
     for list_node in list
       if this._coords_equal(node, list_node)
-        return true
+        return list_node
     return false
 
   _node_open: (node) ->
     this._node_in_list(node, @open)
   _node_closed: (node) ->
-    this._node_in_list(node, @closed)
+    !!this._node_in_list(node, @closed)
   _node_impassable: (node) ->
-    this._node_in_list(node, @impassable)
+    !!this._node_in_list(node, @impassable)
 
 
 
